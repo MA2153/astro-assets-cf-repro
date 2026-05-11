@@ -26,6 +26,9 @@ importers:
       sharp:
         specifier: ^0.34.3
         version: 0.34.5
+      wrangler:
+        specifier: ^4.90.0
+        version: 4.90.0
 
 packages:
 
