@@ -26,7 +26,6 @@ Cloudflare applies HTTP response headers to hosted assets via a `_headers` file 
 2. The `_headers` file in the output directory contains **no rule** for the assets path (`/_astro/*` or `/<base>/_astro/*` when a base path is configured).
 3. Cloudflare serves `/_astro/*.js`, `/_astro/*.css`, etc. with `Cache-Control: public, max-age=0, must-revalidate`.
 4. Browsers must revalidate every asset on every page load before fonts render, scripts execute, and styles apply.
-5. Cloudflare's own edge caches treat these assets as non-cacheable across requests, increasing origin load.
 
 ### With a custom base path
 
@@ -39,14 +38,6 @@ The bug is compounded when `base` is set in `astro.config.*` (e.g., `base: '/blo
 The `@astrojs/cloudflare` integration's `astro:build:done` hook assembled the `_redirects` file and other Cloudflare-specific output artifacts, but contained **no logic to write cache headers for hashed assets**. The integration was responsible for all other `_headers` manipulation (e.g., in related PRs for KV namespaces and session injection) but this particular concern was never addressed.
 
 Without an explicit rule in `_headers` for `/_astro/*`, Cloudflare applies its default header, `Cache-Control: public, max-age=0, must-revalidate`, which instructs browsers to revalidate every asset on each load rather than serving from cache.
-
-The omission had a secondary consequence: if a user had already written their own `_headers` file with a `Cache-Control` rule that matched the assets path (e.g., a global `/*` rule with `Cache-Control: no-cache`), Cloudflare's documented behavior is to **merge headers from all matching rules with a comma**. This means a future attempt to add the immutable rule would produce contradictory output like:
-
-```
-Cache-Control: no-cache, public, max-age=31536000, immutable
-```
-
-This is semantically invalid — `no-cache` and `immutable` are mutually exclusive directives — and browsers handle it inconsistently.
 
 ---
 
@@ -74,7 +65,6 @@ This is semantically invalid — `no-cache` and `immutable` are mutually exclusi
    import cloudflare from '@astrojs/cloudflare';
    export default defineConfig({
      adapter: cloudflare(),
-     output: 'static',
    });
    ```
 3. Run `astro build`.
@@ -121,6 +111,6 @@ When `build.assetsPrefix` is configured, the assets are not served by Cloudflare
 
 ## Notes
 
-- Cloudflare's `_headers` format is documented at [developers.cloudflare.com/pages/configuration/headers](https://developers.cloudflare.com/pages/configuration/headers/). Key behavior: when multiple rules match a single request, all matching rules' headers are merged (comma-joined for duplicates). When no rule matches, Cloudflare applies `Cache-Control: public, max-age=0, must-revalidate` by default.
+- Cloudflare's `_headers` format is documented at [here](https://developers.cloudflare.com/workers/static-assets/headers/). Key behavior: when multiple rules match a single request, all matching rules' headers are merged (comma-joined for duplicates). When no rule matches, Cloudflare applies `Cache-Control: public, max-age=0, must-revalidate` by default.
 - The pattern-matching logic needed to detect pre-existing `Cache-Control` coverage must implement Cloudflare's splat (`*`) and named-placeholder (`:name`) syntax — a plain substring check is insufficient.
 - This bug affects both `output: 'static'` and `output: 'server'` / `output: 'hybrid'` builds (which write to `dist/client/`).
