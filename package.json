@@ -11,6 +11,9 @@
     "preview": "astro preview",
     "astro": "astro"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "sharp", "workerd"]
+  },
   "dependencies": {
     "@astrojs/cloudflare": "file:./vendor/astrojs-cloudflare-13.5.1.tgz",
     "@astrojs/mdx": "^5.0.4",
